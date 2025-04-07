@@ -14,12 +14,16 @@ import subprocess
 import re
 import time
 import os
+
+
+
 def send_get_request(video_id):
     url = f"https://www.tryparrotai.com/video?id={video_id}"
     
 
     service = Service()
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless")  # Run in headless mode
     driver = webdriver.Chrome(service=service, options=options)
     driver.get(url)
     # Wait for the video tag to load (wait for up to 5 seconds)
@@ -51,6 +55,10 @@ def generate_video_id():
     return "w_" + "".join(random.choices(string.ascii_letters + string.digits, k=random.randint(9, 12)))
 
 def send_post_request():
+    proxy = {
+        'http': 'socks5h://127.0.0.1:9050',  # SOCKS5 protocol (for Tor)
+        'https': 'socks5h://127.0.0.1:9050'
+    }
     user_text = input("Enter the text: ")
     video_id = generate_video_id()
     
@@ -71,31 +79,13 @@ def send_post_request():
         "communityVoice": True,
         "communityVoiceId": "14992f96-5d18-48e3-96c4-7997996cd039"
     }
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data, proxies=proxy)
     print("POST Response:", response.text)
     return video_id
     
 
-"""def send_get_request(video_id):
-    url = f"https://www.tryparrotai.com/video?id={video_id}"
-    headers = {
-        "Host": "www.tryparrotai.com",
-        "User-Agent": "kings",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-    response = requests.get(url, headers=headers)
-    # I WANT TO WAIT 5 SECONDS BEFORE GETTING THE RESPONSE 
-    pattern = r'<video[^>]*\s+src="([^"]+)"'
-    math = re.search(pattern, response.text)
-    if math:
-        video_src = math.group(1)
-        print(video_src)
-    else:
-        print("No video src found")
-    #print("GET Response:", response.text)"""
-
 def download_video(video_url, video_id):
-    output_path = f"C:\\Users\\ALESSIO\\Desktop\\PARROTAI\\mp4\\{video_id}.mp4"
+    output_path = f"./{video_id}.mp4"
     #command = ["curl", "-o", output_path, f'"{video_url}"']
     os.system(f'curl -o {output_path} "{video_url}"')
     print(video_url, video_id)

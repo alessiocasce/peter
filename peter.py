@@ -3,32 +3,42 @@ import random
 import string
 import re
 import time
-from mitmproxy.tools.main import mitmweb # type: ignore
+import os
+
+# The previous imports remain the same
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 import subprocess
-import re
-import time
-import os
+
+# Function to extract Peter's lines from the script
+def extract_peters_lines(script_file):
+    peters_lines = []
+    with open(script_file, 'r') as file:
+        script = file.read()
+    
+    # Split the script into sections by looking for lines starting with [Peter]
+    peters_lines = re.findall(r'(?s)\[Peter\]\n(.*?)\n\n', script, re.DOTALL)
+    #print([item for peters_lines.split('\n') in peters_lines for item in peters_lines.split('\n')])
+    nested_list = [line.split('\n') for line in peters_lines]
+    flattened_list = [item for sublist in nested_list for item in sublist]
+    
+    return flattened_list
+
 def send_get_request(video_id):
     url = f"https://www.tryparrotai.com/video?id={video_id}"
     
-
     service = Service()
     options = webdriver.ChromeOptions()
+    options.add_argument("--headless")  # Run in headless mode
     driver = webdriver.Chrome(service=service, options=options)
     driver.get(url)
-    # Wait for the video tag to load (wait for up to 5 seconds)
     try:
         WebDriverWait(driver, 5).until(
             EC.presence_of_element_located((By.TAG_NAME, "video"))
         )
-        
-        # Extract the video src attribute after the page has loaded
         page_source = driver.page_source
         pattern = r'<video[^>]*\s+src="([^"]+)"'
         match = re.search(pattern, page_source)
@@ -36,22 +46,23 @@ def send_get_request(video_id):
         if match:
             video_src = match.group(1)
             print(video_src)
-            return video_src.replace("amp;","")
+            return video_src.replace("amp;", "")
         else:
             print("No video src found")
     
     except Exception as e:
         print(f"Error: {e}")
     
-    # Close the driver after use
     driver.quit()
-
 
 def generate_video_id():
     return "w_" + "".join(random.choices(string.ascii_letters + string.digits, k=random.randint(9, 12)))
 
-def send_post_request():
-    user_text = input("Enter the text: ")
+def send_post_request(user_text):
+    proxy = {
+        'http': 'socks5h://127.0.0.1:9050',  # SOCKS5 protocol (for Tor)
+        'https': 'socks5h://127.0.0.1:9050'
+    }
     video_id = generate_video_id()
     
     url = "https://www.tryparrotai.com/api/create"
@@ -71,40 +82,23 @@ def send_post_request():
         "communityVoice": True,
         "communityVoiceId": "e546a283-24e9-4794-98ab-ac423acc715b"
     }
-    response = requests.post(url, headers=headers, json=data)
+    response = requests.post(url, headers=headers, json=data, proxies=proxy)
     print("POST Response:", response.text)
     return video_id
-    
 
-"""def send_get_request(video_id):
-    url = f"https://www.tryparrotai.com/video?id={video_id}"
-    headers = {
-        "Host": "www.tryparrotai.com",
-        "User-Agent": "kings",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    }
-    response = requests.get(url, headers=headers)
-    # I WANT TO WAIT 5 SECONDS BEFORE GETTING THE RESPONSE 
-    pattern = r'<video[^>]*\s+src="([^"]+)"'
-    math = re.search(pattern, response.text)
-    if math:
-        video_src = math.group(1)
-        print(video_src)
-    else:
-        print("No video src found")
-    #print("GET Response:", response.text)"""
-
-def download_video(video_url, video_id):
-    output_path = f"C:\\Users\\ALESSIO\\Desktop\\PARROTAI\\mp4\\{video_id}.mp4"
-    #command = ["curl", "-o", output_path, f'"{video_url}"']
+def download_video(video_url, video_id, index):
+    output_path = f"./Peter{index}.mp4"
     os.system(f'curl -o {output_path} "{video_url}"')
-    print(video_url, video_id)
-    # Run the curl command
-    #subprocess.Popen(command, shell=True)
-    
     print(f"Video downloaded to {output_path}")
+
 if __name__ == "__main__":
-    video_id = send_post_request()
-    time.sleep(2)  # Give some time before GET request
-    url2 = send_get_request(video_id)
-    download_video(url2, video_id)
+    # Extract all Peter's lines from the script file
+    peters_lines = extract_peters_lines('script.txt')
+    
+    # For each line that Peter says, generate a video and download it
+    for index, line in enumerate(peters_lines, 1):  # Start index from 1
+        print(f"Processing: {line}")
+        video_id = send_post_request(line)
+        time.sleep(2)  # Wait before making the GET request
+        video_url = send_get_request(video_id)
+        download_video(video_url, video_id, index)
