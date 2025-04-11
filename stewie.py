@@ -15,7 +15,18 @@ import re
 import time
 import os
 
-
+def extract_stewie_lines(script_file):
+    peters_lines = []
+    with open(script_file, 'r') as file:
+        script = file.read()
+    
+    # Split the script into sections by looking for lines starting with [Peter]
+    peters_lines = re.findall(r'(?s)\[Stewie\]\n(.*?)\n\n', script, re.DOTALL)
+    #print([item for peters_lines.split('\n') in peters_lines for item in peters_lines.split('\n')])
+    nested_list = [line.split('\n') for line in peters_lines]
+    flattened_list = [item for sublist in nested_list for item in sublist]
+    
+    return flattened_list
 
 def send_get_request(video_id):
     url = f"https://www.tryparrotai.com/video?id={video_id}"
@@ -28,7 +39,7 @@ def send_get_request(video_id):
     driver.get(url)
     # Wait for the video tag to load (wait for up to 5 seconds)
     try:
-        WebDriverWait(driver, 5).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, "video"))
         )
         
@@ -54,18 +65,17 @@ def send_get_request(video_id):
 def generate_video_id():
     return "w_" + "".join(random.choices(string.ascii_letters + string.digits, k=random.randint(9, 12)))
 
-def send_post_request():
+def send_post_request(user_text):
     proxy = {
         'http': 'socks5h://127.0.0.1:9050',  # SOCKS5 protocol (for Tor)
         'https': 'socks5h://127.0.0.1:9050'
     }
-    user_text = input("Enter the text: ")
     video_id = generate_video_id()
     
     url = "https://www.tryparrotai.com/api/create"
     headers = {
         "Host": "www.tryparrotai.com",
-        "User-Agent": "kingsa",
+        "User-Agent": "kingssa",
         "Accept": "*/*",
         "Content-Type": "application/json",
         "Origin": "https://www.tryparrotai.com",
@@ -81,20 +91,29 @@ def send_post_request():
     }
     response = requests.post(url, headers=headers, json=data, proxies=proxy)
     print("POST Response:", response.text)
+    if "false" in response.text:
+        exit()
     return video_id
     
 
-def download_video(video_url, video_id):
-    output_path = f"./{video_id}.mp4"
+def download_video(video_url, video_id, index):
+    output_path = f"./Stewie{index}.mp4"
     #command = ["curl", "-o", output_path, f'"{video_url}"']
     os.system(f'curl -o {output_path} "{video_url}"')
-    print(video_url, video_id)
+    print(f"Video downloaded to {output_path}")
     # Run the curl command
     #subprocess.Popen(command, shell=True)
-    
-    print(f"Video downloaded to {output_path}")
 if __name__ == "__main__":
-    video_id = send_post_request()
-    time.sleep(2)  # Give some time before GET request
-    url2 = send_get_request(video_id)
-    download_video(url2, video_id)
+    # Extract all Peter's lines from the script file
+    peters_lines = extract_stewie_lines('./script.txt')
+    
+    # For each line that Peter says, generate a video and download it
+    for index, line in enumerate(peters_lines, 1):  # Start index from 1
+        if line[:2]=="//":
+            print("Skipping: ", line)
+            continue 
+        print(f"Processing: {line}")
+        video_id = send_post_request(line)
+        time.sleep(2)  # Wait before making the GET request
+        video_url = send_get_request(video_id)
+        download_video(video_url, video_id, index)

@@ -68,7 +68,7 @@ def send_post_request(user_text):
     url = "https://www.tryparrotai.com/api/create"
     headers = {
         "Host": "www.tryparrotai.com",
-        "User-Agent": "kingsa",
+        "User-Agent": "kingsaa",
         "Accept": "*/*",
         "Content-Type": "application/json",
         "Origin": "https://www.tryparrotai.com",
@@ -84,6 +84,8 @@ def send_post_request(user_text):
     }
     response = requests.post(url, headers=headers, json=data, proxies=proxy)
     print("POST Response:", response.text)
+    if "false" in response.text:
+        exit()
     return video_id
 
 def download_video(video_url, video_id, index):
@@ -97,6 +99,9 @@ if __name__ == "__main__":
     
     # For each line that Peter says, generate a video and download it
     for index, line in enumerate(peters_lines, 1):  # Start index from 1
+        if line[:2]=="//":
+            print("Skipping: ", line)
+            continue 
         print(f"Processing: {line}")
         video_id = send_post_request(line)
         time.sleep(2)  # Wait before making the GET request
