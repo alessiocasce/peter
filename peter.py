@@ -36,7 +36,7 @@ def send_get_request(video_id):
     driver = webdriver.Chrome(service=service, options=options)
     driver.get(url)
     try:
-        WebDriverWait(driver, 5).until(
+        WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.TAG_NAME, "video"))
         )
         page_source = driver.page_source
